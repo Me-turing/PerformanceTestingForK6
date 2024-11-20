@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>K6 脚本生成器</title>
+    <link rel="stylesheet" href="./css/bootstrap.min.css">
+    <script src="./js/jquery-3.5.1.min.js"></script>
+    <script src="./js/ace.js"></script>
+    <script src="./js/echarts.min.js"></script>
+    <link rel="stylesheet" href="./css/all.min.css">
+    <style>
+        body {
+            background-color: #f4f7fa; /* 背景颜色 */
+            font-family: 'Arial', sans-serif; /* 字体 */
+        }
+        #details {
+            margin-top: 20px;
+        }
+        .card {
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            border-radius: 10px; /* 圆角 */
+        }
+        .card:hover {
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+            transform: translateY(-2px);
+        }
+        .card-header {
+            font-weight: 500;
+            background-color: #007bff; /* 卡片头部背景颜色 */
+            color: white; /* 字体颜色 */
+        }
+        .metric-value {
+            font-weight: 600;
+            color: #333; /* 字体颜色 */
+        }
+        .table-sm td {
+            padding: 0.75rem; /* 增加行间距 */
+            border-top: 1px solid rgba(0, 0, 0, 0.1);
+        }
+        #chart {
+            border-radius: 10px;
+            padding: 15px;
+            background: white;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .steps {
+            padding: 10px;
+            background-color: #e9ecef; /* 步骤背景颜色 */
+            border-radius: 5px;
+        }
+        .step {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .step .badge {
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            margin-right: 10px;
+            background-color: #007bff; /* 徽章背景颜色 */
+            color: white; /* 徽章字体颜色 */
+        }
+        .btn-primary {
+            background-color: #007bff; /* 按钮背景颜色 */
+            border-color: #007bff; /* 按钮边框颜色 */
+        }
+        .btn-primary:hover {
+            background-color: #0056b3; /* 悬停时按钮颜色 */
+            border-color: #0056b3; /* 悬停时按钮边框颜色 */
+        }
+        code {
+            background-color: #f8f9fa;
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: #e83e8c;
+            font-size: 0.9em;
+        }
+        .card-header h5 {
+            display: flex;
+            align-items: center;
+        }
+        .me-2 {
+            margin-right: 0.5rem;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container mt-5">
+        <h1 class="text-center mb-4">K6 性能测试脚本生成器</h1>
+        
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-info-circle me-2"></i>
+                    使用说明
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="steps">
+                            <div class="step mb-3">
+                                <span class="badge">1</span>
+                                <span>首先按照测试需求填写需要测试的参数</span>
+                            </div>
+                            <div class="step mb-3">
+                                <span class="badge">2</span>
+                                <span>生成K6的脚本</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="steps">
+                            <div class="step mb-3">
+                                <span class="badge">3</span>
+                                <span>执行命令：<code>k6.exe run 脚本名称.js --out json=output.json --console-output=response.log</code></span>
+                            </div>
+                            <div class="step mb-3">
+                                <span class="badge">4</span>
+                                <span>将k6同级的输出文件上传到分析 K6 测试结果</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <form id="scriptForm" class="mt-4">
+            <div class="form-group">
+                <label for="url">测试 URL：</label>
+                <input type="text" class="form-control" id="url" placeholder="请输入测试的 URL (包含 http:// 或 https://)">
+            </div>
+            <div class="form-group">
+                <label for="requestMethod">请求方式：</label>
+                <select class="form-control" id="requestMethod">
+                    <option value="GET">GET</option>
+                    <option value="POST">POST</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="vus">虚拟用户数 (VUs)：</label>
+                <input type="number" class="form-control" id="vus" min="1" placeholder="请输入虚拟用户数">
+            </div>
+            <div class="form-group">
+                <label for="duration">测试持续时间（秒）：</label>
+                <input type="number" class="form-control" id="duration" min="1" placeholder="请输入持续时间（秒）">
+            </div>
+            <div class="form-group">
+                <label for="cookies">Cookies：</label>
+                <textarea class="form-control" id="cookies" rows="3"
+                    placeholder="请输入 Cookies（格式为 key=value; key2=value2）"></textarea>
+            </div>
+            <div class="form-group">
+                <label for="headers">请求头（HTTP 格式）：</label>
+                <textarea class="form-control" id="headers" rows="10"
+                    placeholder='请输入请求头（每个请求头占一行，例如：\nAccept: */*\nContent-Type: application/json）'></textarea>
+            </div>
+            <div class="form-group">
+                <label for="body">请求体（JSON 格式）：</label>
+                <textarea class="form-control" id="body" rows="5"
+                    placeholder='请输入请求体（JSON 格式，例如：{"key": "value"}）'></textarea>
+            </div>
+            <button type="button" id="generateButton" class="btn btn-primary">生成脚本</button>
+            <!-- <button type="button" id="simulateButton" class="btn btn-success ms-2">模拟测试</button> -->
+        </form>
+
+        <div class="mt-4">
+            <h4>生成的 K6 脚本：</h4>
+            <div id="editor" style="height: 400px; width: 100%; border: 1px solid #ddd;"></div>
+        </div>
+
+        <div class="form-group mt-4">
+            <h4>分析 K6 测试结果：</h4>
+            <div class="d-flex align-items-center">
+                <input type="file" class="form-control-file me-2" id="jsonFileInput" accept=".json">
+                <button type="button" id="analyzeButton" class="btn btn-primary" style="min-width: 150px;">分析结果</button>
+            </div>
+        </div>
+
+        <div class="mt-4">
+            <div class="row">
+                <div class="col-12 mb-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">性能测试总览</h5>
+                        </div>
+                        <div class="card-body">
+                            <div id="chart" style="height: 400px;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row" id="details" style="display: none;">
+                <div class="col-md-4 mb-2">
+                    <div class="card h-100">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0">响应时间分析</h5>
+                        </div>
+                        <div class="card-body">
+                            <table class="table table-sm">
+                                <tr>
+                                    <td class="text-muted">平均响应时间</td>
+                                    <td class="metric-value text-right">${resultData.response_times.avg.toFixed(2)} ms</td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted">最小响应时间</td>
+                                    <td class="metric-value text-right">${resultData.response_times.min.toFixed(2)} ms</td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted">最大响应时间</td>
+                                    <td class="metric-value text-right">${resultData.response_times.max.toFixed(2)} ms</td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted">95%响应时</td>
+                                    <td class="metric-value text-right">${resultData.response_times.p95.toFixed(2)} ms</td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted">99%响应时间</td>
+                                    <td class="metric-value text-right">${resultData.response_times.p99.toFixed(2)} ms</td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted">平均等待时间</td>
+                                    <td class="metric-value text-right">${resultData.response_times.waiting_avg.toFixed(2)} ms</td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted">平均接收时间</td>
+                                    <td class="metric-value text-right">${resultData.response_times.receiving_avg.toFixed(2)} ms</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-5 mb-2">
+                    <div class="card h-100">
+                        <div class="card-header bg-success text-white">
+                            <h5 class="mb-0">吞吐量指标</h5>
+                        </div>
+                        <div class="card-body">
+                            <table class="table table-sm">
+                                <tr>
+                                    <td class="text-muted">总请求数</td>
+                                    <td class="metric-value text-right">${resultData.throughput.total_requests}</td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted">TPS (每秒事务数)</td>
+                                    <td class="metric-value text-right">${resultData.throughput.requests_per_sec}</td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted">总迭代次数</td>
+                                    <td class="metric-value text-right">${resultData.throughput.total_iterations}</td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted">接收数据量</td>
+                                    <td class="metric-value text-right">${formatBytes(resultData.throughput.data_received)}</td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted">发送数据量</td>
+                                    <td class="metric-value text-right">${formatBytes(resultData.throughput.data_sent)}</td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted">测试持续时间</td>
+                                    <td class="metric-value text-right">${resultData.load.test_duration} 秒</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-4 mb-2">
+                    <div class="card h-100">
+                        <div class="card-header bg-info text-white">
+                            <h5 class="mb-0">连接统计</h5>
+                        </div>
+                        <div class="card-body">
+                            <table class="table table-sm">
+                                <tr>
+                                    <td class="text-muted">平均连接时间</td>
+                                    <td class="metric-value text-right">${resultData.connection.connecting_avg.toFixed(2)} ms</td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted">平均TLS握手时间</td>
+                                    <td class="metric-value text-right">${resultData.connection.tls_handshaking_avg.toFixed(2)} ms</td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted">平均阻塞时间</td>
+                                    <td class="metric-value text-right">${resultData.connection.blocked_avg.toFixed(2)} ms</td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted">失败率</td>
+                                    <td class="metric-value text-right">${resultData.errors.failed_rate}%</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        $(document).ready(function () {
+            // 初始隐藏图表和详情区域
+            $('#chart').parent().parent().parent().hide();
+            $('#details').hide();
+
+            var editor = ace.edit("editor");
+            editor.session.setMode("ace/mode/javascript");
+            editor.setTheme("ace/theme/github");
+            editor.setReadOnly(true);
+
+            $('#generateButton').click(function () {
+                var url = $('#url').val();
+                var requestMethod = $('#requestMethod').val();
+                var vus = $('#vus').val();
+                var duration = $('#duration').val();
+                var body = $('#body').val();
+                
+                // 处理请求头，移除 Content-Length
+                var headers = $('#headers').val().split('\n').reduce((acc, line) => {
+                    const [key, value] = line.split(':');
+                    if (key && value && key.trim().toLowerCase() !== 'content-length') {
+                        acc[key.trim()] = value.trim();
+                    }
+                    return acc;
+                }, {});
+
+                if (!url || !vus || !duration) {
+                    alert('请填写所有必填字段（URL、虚拟用户数、持续时间）');
+                    return;
+                }
+
+                // 生成脚本
+                var script = `import http from 'k6/http';
+import { check } from 'k6';
+
+export let options = {
+    vus: ${vus},
+    duration: '${duration}s',
+    thresholds: {
+        http_req_duration: ['p(95)<500'],
+        http_req_failed: ['rate<0.01']
+    }
+};
+
+export default function () {
+    const url = '${url}';
+    const payload = ${body ? JSON.stringify(body) : 'null'};
+    const params = {
+        headers: ${JSON.stringify({
+            ...headers,
+            'Content-Type': 'application/json',
+        })}
+    };
+
+    const response = http.${requestMethod.toLowerCase()}(url, ${requestMethod.toUpperCase() === 'POST' ? 'payload' : 'null'}, params);
+
+    check(response, {
+        'is status 200': (r) => r.status === 200,
+        'transaction time < 500ms': (r) => r.timings.duration < 500
+    });
+
+    if (__VU == 1) {
+        console.info(JSON.stringify({
+            status: response.status,
+            body: response.body,
+            headers: response.headers,
+            timings: response.timings
+        }, null, 2));
+    }
+}`;
+
+                editor.setValue(script, 1);
+                
+                // 创建 Blob 对象
+                const blob = new Blob([script], { type: 'text/javascript' });
+                
+                // 创建下载链接
+                const downloadLink = document.createElement('a');
+                downloadLink.href = URL.createObjectURL(blob);
+                downloadLink.download = 'k6-test-script.js';
+                
+                // 触发下载
+                document.body.appendChild(downloadLink);
+                downloadLink.click();
+                document.body.removeChild(downloadLink);
+                
+                // 清理 URL 对象
+                URL.revokeObjectURL(downloadLink.href);
+            });
+
+            // Function to parse K6 output and display charts
+            $('#analyzeButton').click(function () {
+                const fileInput = document.getElementById('jsonFileInput');
+                const file = fileInput.files[0];
+                
+                if (!file) {
+                    alert('请先选择 JSON 文件');
+                    $('#chart').parent().parent().parent().hide();
+                    $('#details').hide();
+                    return;
+                }
+
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const lines = e.target.result.split('\n').filter(line => line.trim());
+                        const metrics = {
+                            http_reqs: 0,
+                            http_req_duration: [],
+                            http_req_waiting: [],
+                            http_req_receiving: [],
+                            http_req_connecting: [],
+                            http_req_tls_handshaking: [],
+                            http_req_blocked: [],
+                            http_req_failed: [],
+                            data_received: [],
+                            data_sent: [],
+                            iterations: [],
+                            vus: [],
+                            startTime: null,
+                            endTime: null
+                        };
+
+                        lines.forEach(line => {
+                            try {
+                                const data = JSON.parse(line);
+                                if (data.type === 'Point') {
+                                    const metricName = data.metric;
+                                    const value = data.data.value;
+                                    const timestamp = new Date(data.data.time).getTime();
+
+                                    // 记录开始和结束时间
+                                    if (!metrics.startTime || timestamp < metrics.startTime) {
+                                        metrics.startTime = timestamp;
+                                    }
+                                    if (!metrics.endTime || timestamp > metrics.endTime) {
+                                        metrics.endTime = timestamp;
+                                    }
+
+                                    // 根据指标类型存储数据
+                                    switch (metricName) {
+                                        case 'http_reqs':
+                                            metrics.http_reqs++;
+                                            break;
+                                        case 'http_req_duration':
+                                            metrics.http_req_duration.push(value);
+                                            break;
+                                        case 'http_req_waiting':
+                                            metrics.http_req_waiting.push(value);
+                                            break;
+                                        case 'http_req_receiving':
+                                            metrics.http_req_receiving.push(value);
+                                            break;
+                                        case 'http_req_connecting':
+                                            metrics.http_req_connecting.push(value);
+                                            break;
+                                        case 'http_req_tls_handshaking':
+                                            metrics.http_req_tls_handshaking.push(value);
+                                            break;
+                                        case 'http_req_blocked':
+                                            metrics.http_req_blocked.push(value);
+                                            break;
+                                        case 'http_req_failed':
+                                            metrics.http_req_failed.push(value);
+                                            break;
+                                        case 'data_received':
+                                            metrics.data_received.push(value);
+                                            break;
+                                        case 'data_sent':
+                                            metrics.data_sent.push(value);
+                                            break;
+                                        case 'iterations':
+                                            metrics.iterations.push(value);
+                                            break;
+                                        case 'vus':
+                                            metrics.vus.push(value);
+                                            break;
+                                    }
+                                }
+                            } catch (parseError) {
+                                console.error('解析行数据时出错:', parseError);
+                            }
+                        });
+
+                        // 验证数据
+                        validateMetrics(metrics);
+
+                        // 计算测试持续时间（毫秒转换为秒）
+                        const testDuration = Math.ceil((metrics.endTime - metrics.startTime) / 1000);
+
+                        const resultData = {
+                            response_times: {
+                                avg: calculateAverage(metrics.http_req_duration),
+                                min: Math.min(...metrics.http_req_duration),
+                                max: Math.max(...metrics.http_req_duration),
+                                p95: calculatePercentile(metrics.http_req_duration, 95),
+                                p99: calculatePercentile(metrics.http_req_duration, 99),
+                                waiting_avg: calculateAverage(metrics.http_req_waiting),
+                                receiving_avg: calculateAverage(metrics.http_req_receiving)
+                            },
+                            throughput: {
+                                total_requests: metrics.http_reqs,
+                                requests_per_sec: (metrics.http_reqs / testDuration).toFixed(2),
+                                total_iterations: metrics.iterations.length,
+                                data_received: Math.max(...metrics.data_received || [0]),
+                                data_sent: Math.max(...metrics.data_sent || [0]),
+                                test_duration: testDuration
+                            },
+                            connection: {
+                                connecting_avg: calculateAverage(metrics.http_req_connecting),
+                                tls_handshaking_avg: calculateAverage(metrics.http_req_tls_handshaking),
+                                blocked_avg: calculateAverage(metrics.http_req_blocked)
+                            },
+                            errors: {
+                                failed_rate: ((metrics.http_req_failed.filter(v => v === 1).length / metrics.http_reqs) * 100).toFixed(2)
+                            },
+                            load: {
+                                test_duration: testDuration
+                            }
+                        };
+
+                        console.log('处理后的数据:', resultData);
+                        updateChartAndDetails(resultData);
+                    } catch (error) {
+                        console.error('解析误:', error);
+                        alert('解析文件时出错，请检查件格式。');
+                        $('#chart').parent().parent().parent().hide();
+                        $('#details').hide();
+                    }
+                };
+                reader.readAsText(file);
+            });
+
+            // 辅助函数
+            function calculateAverage(array) {
+                if (!array.length) return 0;
+                return array.reduce((a, b) => a + b, 0) / array.length;
+            }
+
+            function sumArray(array) {
+                if (!array.length) return 0;
+                return array.reduce((a, b) => a + b, 0);
+            }
+
+            function calculateTPS(totalRequests, duration) {
+                if (!totalRequests || !duration) return 0;
+                return (totalRequests / duration).toFixed(2);
+            }
+
+            function updateChartAndDetails(resultData) {
+                $('#chart').parent().parent().parent().show();
+                $('#details').show();
+
+                var chart = echarts.init(document.getElementById('chart'));
+                var option = {
+                    title: {
+                        text: 'K6 测试结果分析'
+                    },
+                    tooltip: {
+                        trigger: 'axis',
+                        axisPointer: {
+                            type: 'shadow'
+                        }
+                    },
+                    legend: {
+                        data: ['响应时间', '请求统计']
+                    },
+                    grid: {
+                        left: '3%',
+                        right: '4%',
+                        bottom: '15%',
+                        containLabel: true
+                    },
+                    xAxis: {
+                        type: 'category',
+                        data: ['平均响应时间', '95%响应时间', '99%响应时间', '失败率(%)', '每秒请求数'],
+                        axisLabel: {
+                            rotate: 45,
+                            interval: 0
+                        }
+                    },
+                    yAxis: [
+                        {
+                            type: 'value',
+                            name: '响应时间(ms)',
+                            position: 'left'
+                        },
+                        {
+                            type: 'value',
+                            name: '请求数/失败率',
+                            position: 'right'
+                        }
+                    ],
+                    series: [
+                        {
+                            name: '响应时间',
+                            type: 'bar',
+                            yAxisIndex: 0,
+                            data: [
+                                resultData.response_times.avg.toFixed(2),
+                                resultData.response_times.p95.toFixed(2),
+                                resultData.response_times.p99.toFixed(2),
+                                0,
+                                0
+                            ]
+                        },
+                        {
+                            name: '请求统计',
+                            type: 'bar',
+                            yAxisIndex: 1,
+                            data: [
+                                0,
+                                0,
+                                0,
+                                parseFloat(resultData.errors.failed_rate),
+                                parseFloat(resultData.throughput.requests_per_sec)
+                            ]
+                        }
+                    ]
+                };
+                chart.setOption(option);
+
+                // 更新详细信息
+                $('#details').html(`
+        <div class="row">
+            <div class="col-md-4 mb-2">
+                <div class="card h-100">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">响应时间分析</h5>
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-sm">
+                            <tr><td>平均响应时间</td><td>${resultData.response_times.avg.toFixed(2)} ms</td></tr>
+                            <tr><td>最小响应时间</td><td>${resultData.response_times.min.toFixed(2)} ms</td></tr>
+                            <tr><td>最大响应时间</td><td>${resultData.response_times.max.toFixed(2)} ms</td></tr>
+                            <tr><td>95%响应时</td><td>${resultData.response_times.p95.toFixed(2)} ms</td></tr>
+                            <tr><td>99%响应时间</td><td>${resultData.response_times.p99.toFixed(2)} ms</td></tr>
+                            <tr><td>平均等待时间</td><td>${resultData.response_times.waiting_avg.toFixed(2)} ms</td></tr>
+                            <tr><td>平均接收时间</td><td>${resultData.response_times.receiving_avg.toFixed(2)} ms</td></tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-5 mb-2">
+                <div class="card h-100">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0">吞吐量指标</h5>
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-sm">
+                            <tr><td>总请求数</td><td>${resultData.throughput.total_requests}</td></tr>
+                            <tr><td>TPS (每秒事务数)</td><td>${resultData.throughput.requests_per_sec}</td></tr>
+                            <tr><td>总迭代次数</td><td>${resultData.throughput.total_iterations}</td></tr>
+                            <tr><td>接收数据量</td><td>${formatBytes(resultData.throughput.data_received)}</td></tr>
+                            <tr><td>发送数据量</td><td>${formatBytes(resultData.throughput.data_sent)}</td></tr>
+                            <tr><td>测试持续时间</td><td>${resultData.load.test_duration} 秒</td></tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4 mb-2">
+                <div class="card h-100">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0">连接统计</h5>
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-sm">
+                            <tr><td>平均连接时间</td><td>${resultData.connection.connecting_avg.toFixed(2)} ms</td></tr>
+                            <tr><td>平均TLS握手时间</td><td>${resultData.connection.tls_handshaking_avg.toFixed(2)} ms</td></tr>
+                            <tr><td>平均阻塞时间</td><td>${resultData.connection.blocked_avg.toFixed(2)} ms</td></tr>
+                            <tr><td>失败率</td><td>${resultData.errors.failed_rate}%</td></tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `);
+            }
+
+            // 添加一些辅助函数
+            function formatBytes(bytes, decimals = 2) {
+                if (bytes === 0) return '0 Bytes';
+                const k = 1024;
+                const dm = decimals < 0 ? 0 : decimals;
+                const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+            }
+
+            function calculatePercentile(array, percentile) {
+                if (!array.length) return 0;
+                array.sort((a, b) => a - b);
+                const index = Math.ceil((percentile / 100) * array.length) - 1;
+                return array[index];
+            }
+
+            function validateMetrics(metrics) {
+                if (!metrics.http_req_duration.length) {
+                    throw new Error('没有响应时间数据');
+                }
+                if (metrics.http_reqs === 0) {
+                    throw new Error('没有请求数据');
+                }
+                // ... 其他验证
+            }
+
+            $('#simulateButton').click(async function() {
+                let url = $('#url').val().trim();
+                const body = $('#body').val(); // 获取请求体
+
+                // 设置基础请求头
+                const headers = {
+                    'accept': '*/*',
+                    'accept-language': 'zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6',
+                    'Content-Type': 'application/json' // 设置 Content-Type 为 application/json
+                };
+
+                // 处理请求头
+                $('#headers').val().split('\n').forEach(line => {
+                    line = line.trim();
+                    // 跳过空行和 HTTP/1.1 行
+                    if (line && !line.startsWith('GET') && !line.startsWith('POST')) {
+                        const colonIndex = line.indexOf(':');
+                        if (colonIndex > 0) {
+                            const key = line.slice(0, colonIndex).trim();
+                            const value = line.slice(colonIndex + 1).trim();
+                            headers[key] = value;
+                        }
+                    }
+                });
+
+                if (!url) {
+                    alert('请输入测试 URL');
+                    return;
+                }
+
+                try {
+                    const startTime = performance.now();
+                    const response = await fetch(url, {
+                        method: body ? 'POST' : 'GET', // 根据是否有请求体选择方法
+                        headers: headers,
+                        body: body ? JSON.stringify(JSON.parse(body)) : null, // 确保请求体是 JSON 字符串
+                        mode: 'cors',
+                        credentials: 'include'
+                    });
+
+                    const endTime = performance.now();
+                    const duration = endTime - startTime;
+                    const responseData = await response.text();
+
+                    // ... 其余代码保持不变 ...
+                } catch (error) {
+                    alert('模拟测试失败: ' + error.message);
+                }
+            });
+        });
+    </script>
+</body>
+
+</html>
