@@ -1,0 +1,2 @@
+# PerformanceTestingForK6
+快速生成测试的K6脚本,并对执行结果进行可视化展示
