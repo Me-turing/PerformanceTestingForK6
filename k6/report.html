@@ -1,0 +1,1678 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>K6 性能测试报告</title>
+    <script src="./static/echarts.min.js"></script>
+    <style>
+        :root {
+            /* 颜色变量 */
+            --bg-color: #fff;
+            --text-primary: #2c3e50;
+            --text-secondary: #666;
+            --text-light: #999;
+            --border-color: #eee;
+            
+            /* 间距变量 */
+            --spacing-xs: 5px;
+            --spacing-sm: 8px;
+            --spacing-md: 15px;
+            --spacing-lg: 20px;
+            --spacing-xl: 30px;
+            
+            /* 阴影变量 */
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.1);
+            --shadow-md: 0 2px 4px rgba(0,0,0,0.1);
+            
+            /* 其他通用变量 */
+            --border-radius: 8px;
+            --card-min-width: 0;
+        }
+
+        /* 基础样式 */
+        body {
+            font-family: Arial, sans-serif;
+            margin: var(--spacing-md);
+            background-color: #f5f5f5;
+        }
+
+        .container {
+            width: 98%;
+            max-width: 1800px;
+            margin: 0 auto;
+            padding: 10px;
+        }
+
+        /* 卡片基础样式 */
+        .card-base {
+            background: var(--bg-color);
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow-md);
+            padding: var(--spacing-md);
+            margin-bottom: var(--spacing-sm);
+        }
+
+        /* 网格布局基础样式 */
+        .grid-base {
+            width: 100%;
+            display: flex;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        /* 指标卡片样式 */
+        .metrics-grid {
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: nowrap;
+            gap: 8px;
+            margin-bottom: 15px;
+            width: 100%;
+        }
+
+        .metric-card {
+            flex: 1;
+            min-width: var(--card-min-width);
+            background: var(--bg-color);
+            padding: 6px;
+            border-radius: var(--border-radius);
+            text-align: center;
+            box-shadow: var(--shadow-sm);
+            overflow: hidden;
+        }
+
+        .metric-value {
+            font-size: 14px;
+            font-weight: bold;
+            color: var(--text-primary);
+            margin-bottom: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .metric-label {
+            font-size: 11px;
+            color: var(--text-secondary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .metric-label small {
+            display: block;
+            font-size: 9px;
+            color: var(--text-light);
+        }
+
+        /* 图表布局样式 */
+        .performance-charts-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            width: 100%;
+            margin: 15px 0;
+            min-height: 380px;
+        }
+
+        /* 图表卡片样式 */
+        .chart-card {
+            background: var(--bg-color);
+            border-radius: var(--border-radius);
+            padding: 15px;
+            box-shadow: var(--shadow-sm);
+            width: 100%;
+            height: 360px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* 图表容器样式 */
+        .performance-chart {
+            width: 100%;
+            flex: 1;
+            min-height: 280px;
+        }
+
+        /* 图表标题样式 */
+        .chart-card h3 {
+            margin: 0 0 8px 0;
+            padding-bottom: 6px;
+            font-size: 13px;
+            font-weight: bold;
+            border-bottom: 1px solid var(--border-color);
+            flex-shrink: 0;
+        }
+
+        /* 服务器组样 */
+        .server-group {
+            background: #f8f9fa;
+            border-radius: var(--border-radius);
+            padding: 8px;
+            margin-bottom: 8px;
+            width: 100%;
+            overflow-x: hidden;
+        }
+
+        .server-group h2 {
+            margin-bottom: 10px;
+            padding-bottom: 6px;
+            font-size: 16px;
+        }
+
+        /* 上传区域样式 */
+        .upload-area {
+            text-align: center;
+            padding: var(--spacing-md);
+            border: 2px dashed #ccc;
+            border-radius: var(--border-radius);
+            margin-bottom: var(--spacing-md);
+        }
+
+        .upload-area input {
+            padding: var(--spacing-sm);
+            border-radius: 4px;
+            border: 1px solid var(--border-color);
+            margin-left: var(--spacing-sm);
+            min-width: 200px;
+        }
+
+        /* K6 测试结果看板样式 */
+        .k6-metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 0px 8px;
+            width: 100%;
+            /* margin-bottom: 15px; */
+        }
+
+        .k6-metrics-grid .metric-card {
+            padding: 8px;
+            height: 50px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: var(--bg-color);
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .k6-metrics-grid .metric-value {
+            font-size: 14px;
+            font-weight: bold;
+            color: var(--text-primary);
+            margin-bottom: 2px;
+        }
+
+        .k6-metrics-grid .metric-label {
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+
+        .k6-metrics-grid .metric-label small {
+            font-size: 9px;
+            color: var(--text-light);
+        }
+
+        /* 顶部指标样式 */
+        .metrics-summary {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .metric-item {
+            padding: 8px;
+            border-radius: var(--border-radius);
+            background: var(--bg-color);
+        }
+
+        /* K6测试结果区域特殊样式 */
+        .k6-test-results {
+            display: flex;
+            flex-direction: column;
+            /* gap: 15px; */
+            width: 100%;
+            padding: 12px;
+            box-sizing: border-box;
+        }
+
+        /* K6测试结果图表布局 - 一行两个 */
+        .k6-charts-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            width: 100%;
+            margin: 15px 0;
+            min-height: 320px;
+        }
+
+        /* 性能指标图表布局 - 一行三个 */
+        .metrics-charts-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            width: 100%;
+            margin: 15px 0;
+            min-height: 280px;
+        }
+
+        /* 服务器性能指标看板样式 */
+        .server-metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            gap: 8px;
+            width: 100%;
+            margin-bottom: 15px;
+        }
+
+        .server-metrics-grid .metric-card {
+            padding: 10px;
+            height: 50px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: var(--bg-color);
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow-sm);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>K6 性测试报</h1>
+        
+        <div class="upload-area">
+            <div>
+                <label>上传K6测试结果: </label>
+                <input type="file" onchange="handleTestResultSelect(event)" accept=".json" />
+            </div>
+            <div style="margin-top: 15px;">
+                <label>上传服务器指标: </label>
+                <input type="file" id="fileInput" multiple onchange="loadServerMetrics(event)">
+            </div>
+        </div>
+
+        <div id="testResults" style="display: none;">
+            <div class="server-group">
+                <h2>K6 测试结果</h2>
+                <div class="k6-test-results">
+                    <!-- K6指标网格 -->
+                    <div class="k6-metrics-grid">
+                        <div class="metric-card">
+                            <div class="metric-value" id="totalRequests">-</div>
+                            <div class="metric-label">请求总数<small>Total</small></div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value" id="avgResponseTime">-</div>
+                            <div class="metric-label">响应时间<small>Avg</small></div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value" id="successRate">-</div>
+                            <div class="metric-label">成功率<small>%</small></div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value" id="requestRate">-</div>
+                            <div class="metric-label">事务速率<small>TPS</small></div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value" id="maxVUs">-</div>
+                            <div class="metric-label">并发用户<small>VUs</small></div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value" id="testDuration">-</div>
+                            <div class="metric-label">测试时长<small>s</small></div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value" id="p95ResponseTime">-</div>
+                            <div class="metric-label">P95响应<small>ms</small></div>
+                        </div>
+                    </div>
+                    
+                    <!-- K6图表网格 - 一行两个 -->
+                    <div class="k6-charts-grid">
+                        <div class="chart-card">
+                            <h3>请求响应分布</h3>
+                            <div id="responseTimeChart" class="performance-chart"></div>
+                        </div>
+                        <div class="chart-card">
+                            <h3>请求时间明细</h3>
+                            <div id="timeMetricsChart" class="performance-chart"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="serverMetrics" style="display: none;">
+            <div id="serverGroups"></div>
+        </div>
+        <div id="cpuChart" style="width: 600px; height: 400px;"></div>
+        <div id="memoryChart" style="width: 600px; height: 400px;"></div>
+    </div>
+
+    <script>
+        // 在全局作用域添加基础图表配置
+        const baseChartOptions = {
+            grid: {
+                top: '40px',      // 从40px减小到25px
+                bottom: '25px',   // 从10px增加到25px
+                left: '3%',       // 左侧边距保持不变
+                right: '5%',      // 右侧边距保持不变
+                containLabel: true // 确保刻度标签在容器内
+            },
+            tooltip: {
+                trigger: 'axis',
+                axisPointer: {
+                    type: 'cross'
+                }
+            },
+            legend: {
+                top: 0,           // 从8改为0
+                left: 8,          
+                textStyle: {
+                    fontSize: 11
+                }
+            },
+            xAxis: {
+                type: 'category',
+                axisLabel: {
+                    fontSize: 10,
+                    interval: 'auto'  // 自动调整签间隔
+                }
+            },
+            yAxis: {
+                type: 'value',
+                axisLabel: {
+                    fontSize: 10
+                },
+                splitLine: {      // 优化网格线
+                    show: true,
+                    lineStyle: {
+                        type: 'dashed',
+                        color: '#ddd'
+                    }
+                }
+            }
+        };
+
+        // 全局变量声明 - 只需要一次
+        let serverData = {};
+        let serverCharts = {};
+        let charts = {};  // 唯一的charts声明
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // 初始状态隐藏结果区域
+            const testResults = document.getElementById('testResults');
+            if (testResults) {
+                testResults.style.display = 'none';
+            }
+            
+            // 初始化全局变量
+            window.charts = {};
+            window.serverCharts = {};
+        });
+
+        function handleTestResultSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    
+                    // 显示测试结果区域
+                    document.getElementById('testResults').style.display = 'block';
+                    
+                    // 清除之前的数据和图表
+                    clearPreviousData();
+                    
+                    // 初始化新图表
+                    initializeCharts();
+                    
+                    // 更新看板数据 - 统一保留2位小数
+                    document.getElementById('totalRequests').textContent = Number(data.metrics.http_reqs.values.count).toFixed(2);
+                    document.getElementById('avgResponseTime').textContent = data.metrics.http_req_duration.values.avg.toFixed(2) + ' ms';
+                    document.getElementById('successRate').textContent = (data.metrics.checks.values.rate * 100).toFixed(2) + '%';
+                    document.getElementById('requestRate').textContent = data.metrics.http_reqs.values.rate.toFixed(2);
+                    document.getElementById('maxVUs').textContent = Number(data.metrics.vus_max.values.value).toFixed(2);
+                    document.getElementById('testDuration').textContent = (data.state.testRunDurationMs / 1000).toFixed(2);
+                    document.getElementById('p95ResponseTime').textContent = data.metrics.http_req_duration.values['p(95)'].toFixed(2) + ' ms';
+                    
+                    // 更新响应时间分布图表
+                    if (window.charts.responseTime) {
+                        const responseTimeData = [
+                            Number(data.metrics.http_req_duration.values.min).toFixed(2),
+                            Number(data.metrics.http_req_duration.values.avg).toFixed(2),
+                            Number(data.metrics.http_req_duration.values['p(90)']).toFixed(2),
+                            Number(data.metrics.http_req_duration.values['p(95)']).toFixed(2),
+                            Number(data.metrics.http_req_duration.values.max).toFixed(2)
+                        ].map(Number); // 转换回字以便图表用
+
+                        window.charts.responseTime.setOption({
+                            tooltip: {
+                                trigger: 'axis',
+                                formatter: function(params) {
+                                    return `${params[0].name}: ${params[0].value.toFixed(2)} ms`;
+                                }
+                            },
+                            xAxis: {
+                                type: 'category',
+                                data: ['最小值', '平均值', 'P90', 'P95', '最大值']
+                            },
+                            yAxis: {
+                                type: 'value',
+                                name: '响应时间(ms)',
+                                axisLabel: {
+                                    formatter: function(value) {
+                                        return value.toFixed(2) + ' ms';
+                                    }
+                                }
+                            },
+                            series: [{
+                                // name: '响应时间分布',
+                                type: 'bar',
+                                barWidth: '40%',
+                                itemStyle: {
+                                    color: function(params) {
+                                        const value = params.value;
+                                        if (value <= 100) return '#67C23A';
+                                        if (value <= 300) return '#E6A23C';
+                                        return '#F56C6C';
+                                    }
+                                },
+                                data: responseTimeData,
+                                label: {
+                                    show: true,
+                                    position: 'top',
+                                    formatter: function(params) {
+                                        return params.value.toFixed(2) + ' ms';
+                                    }
+                                }
+                            }]
+                        });
+                    }
+                    
+                    // 更请求时间明细图表为堆叠柱状图
+                    if (window.charts.timeMetrics) {
+                        // 只保有意义的时间指标
+                        const timeData = [
+                            {
+                                name: '等待响应',
+                                value: data.metrics.http_req_waiting.values.avg,
+                                detail: {
+                                    avg: data.metrics.http_req_waiting.values.avg,
+                                    p95: data.metrics.http_req_waiting.values['p(95)'],
+                                    max: data.metrics.http_req_waiting.values.max
+                                },
+                                itemStyle: { color: '#409EFF' }
+                            },
+                            {
+                                name: '建立连接',
+                                value: data.metrics.http_req_connecting.values.avg,
+                                detail: {
+                                    avg: data.metrics.http_req_connecting.values.avg,
+                                    p95: data.metrics.http_req_connecting.values['p(95)'],
+                                    max: data.metrics.http_req_connecting.values.max
+                                },
+                                itemStyle: { color: '#67C23A' }
+                            },
+                            {
+                                name: '请求阻塞',
+                                value: data.metrics.http_req_blocked.values.avg,
+                                detail: {
+                                    avg: data.metrics.http_req_blocked.values.avg,
+                                    p95: data.metrics.http_req_blocked.values['p(95)'],
+                                    max: data.metrics.http_req_blocked.values.max
+                                },
+                                itemStyle: { color: '#F56C6C' }
+                            },
+                            {
+                                name: '接收响应',
+                                value: data.metrics.http_req_receiving.values.avg,
+                                detail: {
+                                    avg: data.metrics.http_req_receiving.values.avg,
+                                    p95: data.metrics.http_req_receiving.values['p(95)'],
+                                    max: data.metrics.http_req_receiving.values.max
+                                },
+                                itemStyle: { color: '#795da3' }
+                            }
+                        ].sort((a, b) => b.value - a.value); // 按平均值降序排序
+
+                        const option = {
+                            title: {
+                                // text: '请求时间明细',
+                                left: 'center'
+                            },
+                            tooltip: {
+                                trigger: 'item',
+                                formatter: function(params) {
+                                    const detail = params.data.detail;
+                                    return `${params.name}<br/>
+                                           平均值: ${detail.avg.toFixed(2)} ms<br/>
+                                           P95: ${detail.p95?.toFixed(2) || 0} ms<br/>
+                                           最大值: ${detail.max.toFixed(2)} ms`;
+                                }
+                            },
+                            legend: {
+                                show: false  // 隐藏图例，因为我们使用标签线展示信息
+                            },
+                            series: [
+                                {
+                                    name: '请求时间',
+                                    type: 'pie',
+                                    radius: ['20%', '65%'],  // 缩小半径，为标签留出空间
+                                    roseType: 'area',
+                                    itemStyle: {
+                                        borderRadius: 4
+                                    },
+                                    label: {
+                                        show: true,
+                                        position: 'outside',  // 改为外部标签
+                                        alignTo: 'edge',      // 对齐到边缘
+                                        minMargin: 5,         // 最小边距
+                                        edgeDistance: '10%',   // 边缘距离
+                                        lineHeight: 15,        // 行高
+                                        formatter: function(params) {
+                                            const detail = params.data.detail;
+                                            return [
+                                                `{name|${params.name}}`,
+                                                `{value|平均: ${detail.avg.toFixed(2)}ms}`,
+                                                `{value|P95: ${detail.p95 > 0 ? detail.p95.toFixed(2) : '<0.01'}ms}`,
+                                                `{value|最大: ${detail.max.toFixed(2)}ms}`
+                                            ].join('\n');
+                                        },
+                                        rich: {
+                                            name: {
+                                                fontSize: 12,
+                                                fontWeight: 'bold',
+                                                padding: [0, 0, 4, 0]
+                                            },
+                                            value: {
+                                                fontSize: 11,
+                                                color: '#666'
+                                            }
+                                        }
+                                    },
+                                    labelLine: {
+                                        show: true,
+                                        length: 15,        // 第一段线长度
+                                        length2: 80,       // 第二段线长度
+                                        smooth: true       // 平滑的线条
+                                    },
+                                    labelLayout: {
+                                        hideOverlap: true  // 隐藏重叠的标签
+                                    },
+                                    emphasis: {
+                                        label: {
+                                            fontSize: 12,
+                                            fontWeight: 'bold'
+                                        },
+                                        itemStyle: {
+                                            shadowBlur: 10,
+                                            shadowOffsetX: 0,
+                                            shadowColor: 'rgba(0, 0, 0, 0.5)'
+                                        }
+                                    },
+                                    data: timeData
+                                }
+                            ]
+                        };
+
+                        window.charts.timeMetrics.setOption(option);
+                    }
+                    
+                } catch (error) {
+                    console.error('处理测试结果文件失败:', error);
+                    alert('处理测试结果文件失败: ' + error.message);
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function processTestResults(data) {
+            try {
+                // 在这里添加处理k6测试结果的逻辑
+                console.log('处理测试结果数据:', data);
+                // TODO: 实现体的数据处理逻辑
+            } catch (error) {
+                console.error('处理测试结果据失败:', error);
+                alert('处理测试结果数据失败: ' + error.message);
+            }
+        }
+
+        function clearPreviousData() {
+            // 清除现有图表实例
+            if (window.charts) {
+                Object.values(window.charts).forEach(chart => {
+                    if (chart && typeof chart.dispose === 'function') {
+                        chart.dispose();
+                    }
+                });
+            }
+            window.charts = {};  // 重置charts对象
+            
+            // 清除指标显示 - 移除errorRate
+            const metrics = [
+                'totalRequests', 'avgResponseTime', 'successRate', 'requestRate',
+                'maxVUs', 'testDuration', 'p95ResponseTime'
+            ];
+            
+            metrics.forEach(id => {
+                const element = document.getElementById(id);
+                if (element) {
+                    element.textContent = '-';
+                }
+            });
+        }
+
+        function formatNumber(num) {
+            if (typeof num !== 'number' || isNaN(num)) return '0';
+            
+            // 对于小于0.01的数值
+            if (num < 0.01) return num.toFixed(4);
+            
+            // 对于小于1的数值
+            if (num < 1) return num.toFixed(3);
+            
+            // 对于小于100的数值
+            if (num < 100) return num.toFixed(2);
+            
+            // 对于大数值，使用千位分隔
+            return num.toLocaleString('zh-CN', {
+                maximumFractionDigits: 2
+            });
+        }
+
+        function displayReport(data) {
+            try {
+                const metrics = data.metrics;
+                
+                // 更新看板数据
+                document.getElementById('totalRequests').textContent = metrics.http_reqs.values.count.toLocaleString();
+                document.getElementById('avgResponseTime').textContent = metrics.http_req_duration.values.avg.toFixed(2) + ' ms';
+                document.getElementById('successRate').textContent = '100.00%';  // 根checks.rate计算
+                const tps = calculateTPS(metrics);
+                document.getElementById('requestRate').textContent = formatNumber(tps);  // 使用formatNumber格式化
+                document.getElementById('maxVUs').textContent = metrics.vus_max.values.value;
+                document.getElementById('testDuration').textContent = (data.state.testRunDurationMs / 1000).toFixed(1);
+                document.getElementById('p95ResponseTime').textContent = metrics.http_req_duration.values['p(95)'].toFixed(2) + ' ms';
+                
+                // 更新响应时间分布图
+                if (window.charts.responseTime) {
+                    window.charts.responseTime.setOption({
+                        xAxis: {
+                            data: ['最小值', '平均值', 'P90', 'P95', '最大值']
+                        },
+                        series: [{
+                            data: [
+                                metrics.http_req_duration.values.min,
+                                metrics.http_req_duration.values.avg,
+                                metrics.http_req_duration.values['p(90)'],
+                                metrics.http_req_duration.values['p(95)'],
+                                metrics.http_req_duration.values.max
+                            ]
+                        }]
+                    });
+                }
+
+                // 更新请求时间明细图
+                if (window.charts.timeMetrics) {
+                    window.charts.timeMetrics.setOption({
+                        xAxis: {
+                            data: ['阻塞时间', '连接时间', '发送时间', '等待时间', '接收时间']
+                        },
+                        series: [{
+                            data: [
+                                metrics.http_req_blocked.values.avg,
+                                metrics.http_req_connecting.values.avg,
+                                metrics.http_req_sending.values.avg,
+                                metrics.http_req_waiting.values.avg,
+                                metrics.http_req_receiving.values.avg
+                            ]
+                        }]
+                    });
+                }
+
+                console.log('图表数据更新成功');
+            } catch (error) {
+                console.error('更新��表数据失败:', error);
+            }
+        }
+
+        function resizeCharts() {
+            Object.values(window.charts).forEach(chart => {
+                if (chart && typeof chart.resize === 'function') {
+                    chart.resize();
+                }
+            });
+        }
+
+        // 监听窗口大小变化
+        window.addEventListener('resize', resizeCharts);
+
+        // 修改为正确的函数声明
+        function loadServerMetrics(event) {
+            const files = event.target.files;
+            console.log('Selected files:', files); // 添加日志
+
+            if (!files.length) return;
+
+            Array.from(files).forEach(file => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const data = JSON.parse(e.target.result);
+                        console.log('Parsed data:', data); // 添加日志
+
+                        // 使用文件名作为服务器ID的后缀
+                        const serverId = data.server_id + '-' + file.name.split('.')[0];
+                        console.log('Server ID:', serverId); // 添加日志
+
+                        // 显示服务器指标区域
+                        document.getElementById('serverMetrics').style.display = 'block';
+
+                        // 创建或获取服务器组容器
+                        let serverGroup = document.getElementById(`server_${serverId}`);
+                        if (!serverGroup) {
+                            const serverGroups = document.getElementById('serverGroups');
+                            serverGroup = document.createElement('div');
+                            serverGroup.id = `server_${serverId}`;
+                            serverGroup.className = 'server-group';
+                            serverGroup.innerHTML = `
+                                <h2>服务器 ${serverId} 指标</h2>
+                                <div id="overview_${serverId}"></div>
+                                <div class="metrics-charts-grid">
+                                    <div class="chart-card">
+                                        <h3>CPU使用率</h3>
+                                        <div id="cpu_${serverId}" class="performance-chart"></div>
+                                    </div>
+                                    <div class="chart-card">
+                                        <h3>内存使用率</h3>
+                                        <div id="memory_${serverId}" class="performance-chart"></div>
+                                    </div>
+                                    <div class="chart-card">
+                                        <h3>磁盘IO</h3>
+                                        <div id="disk_io_${serverId}" class="performance-chart"></div>
+                                    </div>
+                                    <div class="chart-card">
+                                        <h3>网络流量</h3>
+                                        <div id="network_${serverId}" class="performance-chart"></div>
+                                    </div>
+                                    <div class="chart-card">
+                                        <h3>TCP</h3>
+                                        <div id="tcp_${serverId}" class="performance-chart"></div>
+                                    </div>
+                                    <div class="chart-card">
+                                        <h3>系统负载</h3>
+                                        <div id="load_${serverId}" class="performance-chart"></div>
+                                    </div>
+                                </div>
+                            `;
+                            serverGroups.appendChild(serverGroup);
+                        }
+
+                        // 更新服务器概览和图表
+                        updateServerOverview(data.metrics, null, serverId);
+
+                        // 确保DOM已经更新后再初始化图表
+                        setTimeout(() => {
+                            initializeServerCharts(data.metrics, serverId);
+
+                            // 发一次resize以确保图表正确渲染
+                            if (serverCharts[serverId]) {
+                                Object.values(serverCharts[serverId]).forEach(chart => {
+                                    if (chart && typeof chart.resize === 'function') {
+                                        chart.resize();
+                                    }
+                                });
+                            }
+                        }, 100);
+
+                    } catch (error) {
+                        console.error('处理服务器指标文件失败:', error);
+                        alert('处理服务器指标文件失败: ' + error.message);
+                    }
+                };
+                reader.readAsText(file);
+            });
+        }
+
+        // 修改更新概览函数服务器
+        function updateServerOverview(metrics, k6Data, serverName) {
+            if (!metrics || metrics.length === 0) return;
+
+            const stats = {
+                cpu: {
+                    avg: average(metrics.map(m => m.cpu.usage)),
+                    max: Math.max(...metrics.map(m => m.cpu.usage))
+                },
+                memory: {
+                    avg: average(metrics.map(m => m.memory.usage)),
+                    max: Math.max(...metrics.map(m => m.memory.usage))
+                },
+                tcp: {
+                    avgEstab: average(metrics.map(m => m.tcp.established)),
+                    maxEstab: Math.max(...metrics.map(m => m.tcp.established)),
+                    avgTotal: average(metrics.map(m => m.tcp.total)),
+                    maxTotal: Math.max(...metrics.map(m => m.tcp.total))
+                },
+                load: {
+                    avg: average(metrics.map(m => Number(m.load['1min']))),
+                    max: Math.max(...metrics.map(m => Number(m.load['1min']))),
+                    cores: metrics[0].load.cores
+                },
+                k6: k6Data ? {
+                    vus: k6Data.metrics.vus_max.values.max,
+                    duration: Math.round(k6Data.state.testRunDurationMs / 1000)
+                } : null
+            };
+
+            // 计算负载百分比
+            const loadPercent = (stats.load.avg / stats.load.cores) * 100;
+            const maxLoadPercent = (stats.load.max / stats.load.cores) * 100;
+
+            // 更新显示,使服器特定ID
+            const serverOverview = document.getElementById(`overview_${serverName}`);
+            serverOverview.innerHTML = `
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-value">${formatNumber(stats.cpu.avg)}%</div>
+                        <div class="metric-label">CPU使用率<small>峰值: ${formatNumber(stats.cpu.max)}%</small></div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">${formatNumber(stats.memory.avg)}%</div>
+                        <div class="metric-label">内存使用率<small>峰值: ${formatNumber(stats.memory.max)}%</small></div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">${formatNumber(stats.tcp.avgEstab)} / ${formatNumber(stats.tcp.avgTotal)}</div>
+                        <div class="metric-label">TCP连接<small>峰值: ${formatNumber(stats.tcp.maxEstab)} / ${formatNumber(stats.tcp.maxTotal)}</small></div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">${formatNumber(stats.load.avg)} / ${stats.load.cores}</div>
+                        <div class="metric-label">系统负载<small>峰值: ${formatNumber(stats.load.max)} (${formatNumber(maxLoadPercent)}%)</small></div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">${formatNetworkData(average(metrics.map(m => m.disk.read_bytes)))}</div>
+                        <div class="metric-label">磁盘读取<small>峰值: ${formatNetworkData(Math.max(...metrics.map(m => m.disk.read_bytes)))}</small></div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">${formatNetworkData(average(metrics.map(m => m.disk.write_bytes)))}</div>
+                        <div class="metric-label">磁盘写入<small>峰值: ${formatNetworkData(Math.max(...metrics.map(m => m.disk.write_bytes)))}</small></div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">${formatNumber(average(metrics.map(m => m.disk.io_util)))}%</div>
+                        <div class="metric-label">IO使用率<small>峰: ${formatNumber(Math.max(...metrics.map(m => m.disk.io_util)))}%</small></div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // 修改initializeServerCharts函数，添加console.log来调试
+        function initializeServerCharts(metrics, serverName) {
+            try {
+                console.log('开始初始化服务器图表:', serverName);
+                console.log('metrics数据:', metrics);
+                
+                // 检查数据效性
+                if (!metrics || !Array.isArray(metrics) || metrics.length === 0) {
+                    throw new Error('无效的metrics数据');
+                }
+
+                // 式化时间戳
+                const timestamps = metrics.map(m => formatTime(m.timestamp));
+
+                // 初始化所有图表
+                const charts = {};
+                const chartConfigs = {
+                    cpu: {
+                        series: [
+                            {
+                                name: 'CPU使用率',
+                                data: metrics.map(m => m.cpu.usage),
+                                type: 'line',
+                                smooth: true
+                            },
+                            {
+                                name: 'IO等待',
+                                data: metrics.map(m => m.cpu.io_wait),
+                                type: 'line',
+                                smooth: true
+                            }
+                        ],
+                        yAxis: {
+                            type: 'value',
+                            min: 0,
+                            max: 100,
+                            axisLabel: {
+                                formatter: '{value}%'
+                            }
+                        }
+                    },
+                    memory: {
+                        series: [{
+                            name: '内存使用率',
+                            data: metrics.map(m => m.memory.usage),
+                            type: 'line',
+                            smooth: true
+                        }],
+                        yAxis: {
+                            type: 'value',
+                            min: 0,
+                            max: 100,
+                            axisLabel: {
+                                formatter: '{value}%'
+                            }
+                        }
+                    },
+                    disk_io: {
+                        series: [
+                            {
+                                name: '读取速度',
+                                type: 'line',
+                                data: metrics.map(m => m.disk.read_bytes),
+                                yAxisIndex: 0
+                            },
+                            {
+                                name: '写入速度',
+                                type: 'line',
+                                data: metrics.map(m => m.disk.write_bytes),
+                                yAxisIndex: 0
+                            }
+                        ],
+                        yAxis: [
+                            {
+                                type: 'value',
+                                name: '速度',
+                                axisLabel: {
+                                    formatter: function(value) {
+                                        return formatNetworkData(value);
+                                    }
+                                }
+                            }
+                        ]
+                    },
+                    network: {
+                        series: [
+                            {
+                                name: '入站流量',
+                                data: metrics.map(m => m.network.in_bytes),
+                                type: 'line',
+                                smooth: true
+                            },
+                            {
+                                name: '出站流量',
+                                data: metrics.map(m => m.network.out_bytes),
+                                type: 'line',
+                                smooth: true
+                            }
+                        ]
+                    },
+                    tcp: {
+                        series: [
+                            {
+                                name: '建立连接',
+                                data: metrics.map(m => m.tcp.established),
+                                type: 'line',
+                                smooth: true
+                            },
+                            {
+                                name: 'TIME_WAIT状态',
+                                data: metrics.map(m => m.tcp.time_wait),
+                                type: 'line',
+                                smooth: true
+                            }
+                        ]
+                    },
+                    load: {
+                        series: [
+                            {
+                                name: '1分钟负载',
+                                data: metrics.map(m => Number(m.load['1min'])),
+                                type: 'line',
+                                smooth: true
+                            },
+                            {
+                                name: '5分钟负载',
+                                data: metrics.map(m => Number(m.load['5min'])),
+                                type: 'line',
+                                smooth: true
+                            }
+                        ]
+                    }
+                };
+
+                // 为每个图表应用配置
+                Object.keys(chartConfigs).forEach(chartType => {
+                    console.log(`始化图表: ${chartType}`);
+                    const element = document.getElementById(`${chartType}_${serverName}`);
+                    if (element) {
+                        const chart = echarts.init(element);
+                        const config = chartConfigs[chartType];
+                        
+                        const options = {
+                            ...baseChartOptions,
+                            title: {
+                                text: config.title,
+                                left: 'left',     // 左对齐
+                                top: 0,           // 顶部对齐
+                                textStyle: {
+                                    fontSize: 12,  // 字体大小
+                                    fontWeight: 'normal',  // 字体粗细
+                                    color: '#333'  // 字体颜色
+                                },
+                                padding: [5, 0]    // 上下、左右内距
+                            },
+                            grid: {
+                                ...baseChartOptions.grid,
+                                top: '40px'        // 为标题留出空间
+                            },
+                            series: config.series
+                        };
+
+                        chart.setOption(options);
+                        charts[chartType] = chart;
+                        
+                        console.log(`图表 ${chartType} 初始完成`);
+                    } else {
+                        console.warn(`找到表元素: ${chartType}_${serverName}`);
+                    }
+                });
+
+                // 保存图表实例
+                serverCharts[serverName] = charts;
+                console.log('有图表初始化完成');
+
+                return true;
+            } catch (error) {
+                console.error(`初始图表失败: ${error.message}`);
+                return false;
+            }
+        }
+
+        // 格式化字节大小的辅助函数
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        // 添加辅助函数
+        function readFileAsJson(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = e => {
+                    try {
+                        const data = JSON.parse(e.target.result);
+                        resolve(data);
+                    } catch (error) {
+                        reject(error);
+                    }
+                };
+                reader.onerror = reject;
+                reader.readAsText(file);
+            });
+        }
+
+        function formatNumber(num) {
+            if (typeof num !== 'number' || isNaN(num)) return '0';
+            if (num < 0.01) return '0';
+            if (num < 1) return num.toFixed(2);
+            if (num < 100) return num.toFixed(1);
+            return Math.round(num).toLocaleString();
+        }
+
+        // 优化服务器指标的间轴显示
+        function formatTimestamp(timestamp) {
+            return new Date(parseInt(timestamp)).toLocaleTimeString('zh-CN', {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+        }
+
+        // 优网络流量图表的数据显示
+        function formatNetworkData(bytes) {
+            if (!bytes || bytes < 0) return '0 B/s';
+            const units = ['B/s', 'KB/s', 'MB/s', 'GB/s'];
+            let value = bytes;
+            let unitIndex = 0;
+            
+            while (value >= 1024 && unitIndex < units.length - 1) {
+                value /= 1024;
+                unitIndex++;
+            }
+            
+            return `${value.toFixed(2)} ${units[unitIndex]}`;
+        }
+
+        // 添加数据率格式化函数
+        function formatDataRate(bytesPerSecond) {
+            if (bytesPerSecond === 0) return '0 B/s';
+            const units = ['B/s', 'KB/s', 'MB/s', 'GB/s'];
+            let value = bytesPerSecond;
+            let unitIndex = 0;
+            
+            while (value >= 1024 && unitIndex < units.length - 1) {
+                value /= 1024;
+                unitIndex++;
+            }
+            
+            return `${value.toFixed(2)} ${units[unitIndex]}`;
+        }
+
+        // 添加平均值算辅函数
+        function average(arr) {
+            if (!Array.isArray(arr) || arr.length === 0) return 0;
+            const validNumbers = arr.filter(n => typeof n === 'number' && !isNaN(n));
+            if (validNumbers.length === 0) return 0;
+            return validNumbers.reduce((a, b) => a + b, 0) / validNumbers.length;
+        }
+
+        // CPU使用和IO等待图表
+        function updateCPUMetrics(metricsData) {
+            if (!charts.cpu) {
+                console.warn('CPU图表实例不存在');
+                return;
+            }
+
+            // 将时间戳转换为可读的时间格式
+            const timestamps = metricsData.map(metric => {
+                const date = new Date(metric.timestamp);
+                return date.toLocaleTimeString(); // 使用本地时间格式
+            });
+
+            const cpuUsage = metricsData.map(metric => metric.cpu.usage);
+            const ioWait = metricsData.map(metric => metric.cpu.io_wait);
+
+            charts.cpu.setOption({
+                xAxis: {
+                    type: 'category',
+                    data: timestamps,
+                    axisLabel: {
+                        formatter: function (value) {
+                            return value; // 直接展示转换后的时间
+                        }
+                    }
+                },
+                series: [
+                    { name: 'CPU使用率', data: cpuUsage, type: 'line' },
+                    { name: 'IO等待', data: ioWait, type: 'line' }
+                ]
+            });
+        }
+
+        // 内存使用率图表
+        function displayMemoryMetrics(metricsData) {
+            if (!charts.memory) {
+                console.warn('内图表实例不存在');
+                return;
+            }
+            const timestamps = metricsData.metrics.map(metric => {
+                return new Date(metric.timestamp).toLocaleTimeString();
+            });
+            const memoryUsage = [];
+            const totalMemory = metricsData.metrics[0].memory.total_mb; // 总内存大小
+
+            metricsData.metrics.forEach(metric => {
+                memoryUsage.push(metric.memory.used_mb);
+            });
+
+            charts.memory.setOption({
+                tooltip: { trigger: 'axis' },
+                xAxis: { data: timestamps },
+                series: [{
+                    name: `内存使用率(总内存: ${totalMemory}MB)`,
+                    data: memoryUsage,
+                    type: 'line',
+                    areaStyle: {}
+                }]
+            });
+        }
+
+        // 网络流量图表
+        function displayNetworkMetrics(metricsData) {
+            if (!charts.network) {
+                console.warn('网络流量图表实例不存在');
+                return;
+            }
+            const timestamps = metricsData.metrics.map(metric => {
+                return new Date(metric.timestamp).toLocaleTimeString();
+            });
+            const inBytes = [];
+            const outBytes = [];
+
+            metricsData.metrics.forEach(metric => {
+                inBytes.push(formatDataRate(metric.network.in_bytes));
+                outBytes.push(formatDataRate(metric.network.out_bytes));
+            });
+
+            charts.network.setOption({
+                tooltip: { trigger: 'axis' },
+                legend: {
+                    data: ['入站流量', '出站量'],
+                    top: 25
+                },
+                xAxis: { data: timestamps },
+                series: [
+                    {
+                        name: '站流量',
+                        data: inBytes,
+                        type: 'line'
+                    },
+                    {
+                        name: '出站流量',
+                        data: outBytes,
+                        type: 'line'
+                    }
+                ]
+            });
+        }
+
+        // TCP连接状态图表
+        function displayTCPMetrics(metricsData) {
+            if (!charts.tcp) {
+                console.warn('TCP连接状态图例不存在');
+                return;
+            }
+            const timestamps = [];
+            const established = [];
+            const timeWait = [];
+            const total = [];
+
+            metricsData.metrics.forEach(metric => {
+                timestamps.push(new Date(metric.timestamp).toLocaleTimeString());
+                established.push(metric.tcp.established);
+                timeWait.push(metric.tcp.time_wait);
+                total.push(metric.tcp.total);
+            });
+
+            charts.tcp.setOption({
+                tooltip: { trigger: 'axis' },
+                legend: {
+                    data: ['已建立连接', 'TIME_WAIT状态', '连接数'],
+                    top: 25
+                },
+                xAxis: { data: timestamps },
+                series: [
+                    {
+                        name: '已建立连接',
+                        data: established,
+                        type: 'line'
+                    },
+                    {
+                        name: 'TIME_WAIT状态',
+                        data: timeWait,
+                        type: 'line'
+                    },
+                    {
+                        name: '总连接数',
+                        data: total,
+                        type: 'line'
+                    }
+                ]
+            });
+        }
+
+        // 系统负载图表
+        function displayLoadMetrics(metricsData) {
+            if (!charts.load) {
+                console.warn('系统负载图表实例不存在');
+                return;
+            }
+            const timestamps = [];
+            const load1min = [];
+            const load5min = [];
+            const load15min = [];
+            const cores = metricsData.metrics[0].load.cores;
+
+            metricsData.metrics.forEach(metric => {
+                timestamps.push(new Date(metric.timestamp).toLocaleTimeString());
+                load1min.push(metric.load['1min']);
+                load5min.push(metric.load['5min']);
+                load15min.push(metric.load['15min']);
+            });
+
+            charts.load.setOption({
+                tooltip: { trigger: 'axis' },
+                legend: {
+                    data: ['1分钟负载', '5分钟负', '15分钟负载'],
+                    top: 25
+                },
+                xAxis: { data: timestamps },
+                series: [
+                    {
+                        name: `1分钟负载 (CPU核心数: ${cores})`,
+                        data: load1min,
+                        type: 'line'
+                    },
+                    {
+                        name: '5分钟负载',
+                        data: load5min,
+                        type: 'line'
+                    },
+                    {
+                        name: '15分钟负载',
+                        data: load15min,
+                        type: 'line'
+                    }
+                ]
+            });
+        }
+
+        // 在 script 标签内添加 formatTime 函数
+        function formatTime(timestamp) {
+            return new Date(parseInt(timestamp)).toLocaleTimeString('zh-CN', {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+        }
+
+        // 修改为统一的初始化函数
+        function initCharts() {
+            try {
+                // 清除有图表
+                if (window.charts) {
+                    Object.values(window.charts).forEach(chart => {
+                        if (chart && typeof chart.dispose === 'function') {
+                            chart.dispose();
+                        }
+                    });
+                }
+                window.charts = {}; // 重置charts对象
+
+                // 初始化响应分布图表
+                const responseTimeChart = document.getElementById('responseTimeChart');
+                if (responseTimeChart) {
+                    window.charts.responseTime = echarts.init(responseTimeChart);
+                    window.charts.responseTime.setOption({
+                        ...baseChartOptions,
+                        xAxis: {
+                            type: 'category',
+                            data: ['最小值', '平均值', 'P90', 'P95', '最大值']
+                        },
+                        yAxis: {
+                            type: 'value',
+                            name: '响应时间(ms)'
+                        },
+                        series: [{
+                            type: 'bar',
+                            data: []
+                        }]
+                    });
+                }
+
+                // 初始化请时间明细图表
+                const timeMetricsChart = document.getElementById('timeMetricsChart');
+                if (timeMetricsChart) {
+                    window.charts.timeMetrics = echarts.init(timeMetricsChart);
+                    window.charts.timeMetrics.setOption({
+                        ...baseChartOptions,
+                        xAxis: {
+                            type: 'category',
+                            data: []
+                        },
+                        yAxis: {
+                            type: 'value'
+                        },
+                        series: [{
+                            type: 'line',
+                            data: []
+                        }]
+                    });
+                }
+
+                return true;
+            } catch (error) {
+                console.error('初始化图表失败:', error);
+                return false;
+            }
+        }
+
+        // 使用函数初始化图表
+        initCharts();
+
+        // 添加一个立即执行的resize
+        setTimeout(() => {
+            Object.values(serverCharts).forEach(serverChart => {
+                Object.values(serverChart).forEach(chart => {
+                    if (chart && typeof chart.resize === 'function') {
+                        chart.resize();
+                    }
+                });
+            });
+        }, 100);
+
+        // 修改图表初始化部分
+        function initializeCharts() {
+            try {
+                // 清除现有图表
+                if (window.charts) {
+                    Object.values(window.charts).forEach(chart => {
+                        if (chart && typeof chart.dispose === 'function') {
+                            chart.dispose();
+                        }
+                    });
+                }
+                window.charts = {}; // 重置charts对
+
+                // 始化响应分布图表
+                const responseTimeChart = document.getElementById('responseTimeChart');
+                if (responseTimeChart) {
+                    window.charts.responseTime = echarts.init(responseTimeChart);
+                    window.charts.responseTime.setOption({
+                        ...baseChartOptions,
+                        xAxis: {
+                            type: 'category',
+                            data: ['最小值', '平均值', 'P90', 'P95', '最大值']
+                        },
+                        yAxis: {
+                            type: 'value',
+                            name: '响应时间(ms)'
+                        },
+                        series: [{
+                            type: 'bar',
+                            data: []
+                        }]
+                    });
+                }
+
+                // 初化请求时间明细图表
+                const timeMetricsChart = document.getElementById('timeMetricsChart');
+                if (timeMetricsChart) {
+                    window.charts.timeMetrics = echarts.init(timeMetricsChart);
+                    window.charts.timeMetrics.setOption({
+                        ...baseChartOptions,
+                        xAxis: {
+                            type: 'category',
+                            data: []
+                        },
+                        yAxis: {
+                            type: 'value'
+                        },
+                        series: [{
+                            type: 'line',
+                            data: []
+                        }]
+                    });
+                }
+            } catch (error) {
+                console.error('初始化图表失败:', error);
+            }
+        }
+
+        // 在window.onload中调用初始化
+        window.onload = function() {
+            initializeCharts();
+            
+            // 监听窗口大小变化
+            window.addEventListener('resize', function() {
+                if (window.charts.responseTime) {
+                    window.charts.responseTime.resize();
+                }
+                if (window.charts.timeMetrics) {
+                    window.charts.timeMetrics.resize();
+                }
+            });
+        };
+
+        function updateCharts(data) {
+            try {
+                // 更新响应时间分布图
+                if (window.charts.responseTime) {
+                    const responseTimeData = [
+                        data.metrics.http_req_duration.values.min,
+                        data.metrics.http_req_duration.values.avg,
+                        data.metrics.http_req_duration.values['p(90)'],
+                        data.metrics.http_req_duration.values['p(95)'],
+                        data.metrics.http_req_duration.values.max
+                    ];
+                    
+                    window.charts.responseTime.setOption({
+                        series: [{
+                            data: responseTimeData
+                        }]
+                    });
+                }
+
+                // 更新请求时间明细图
+                if (window.charts.timeMetrics) {
+                    // 准备热力图数据
+                    const stages = [
+                        { name: '等待响应', key: 'http_req_waiting' },
+                        { name: '建立连接', key: 'http_req_connecting' },
+                        { name: 'TLS握手', key: 'http_req_tls_handshaking' },
+                        { name: '请求阻塞', key: 'http_req_blocked' },
+                        { name: '发送请求', key: 'http_req_sending' },
+                        { name: '接收响应', key: 'http_req_receiving' }
+                    ];
+
+                    const metrics = ['min', 'med', 'avg', 'p(90)', 'p(95)', 'max'];
+                    const metricsName = ['最小值', '中位数', '平均值', 'P90', 'P95', '最大值'];
+
+                    // 生成数据
+                    const heatmapData = [];
+                    stages.forEach((stage, i) => {
+                        metrics.forEach((metric, j) => {
+                            const value = data.metrics[stage.key].values[metric] || 0;
+                            heatmapData.push([j, i, value.toFixed(2)]);
+                        });
+                    });
+
+                    const option = {
+                        title: {
+                            text: '请求时分热力图',
+                            left: 'center',
+                            top: 0,
+                            textStyle: {
+                                fontSize: 14
+                            }
+                        },
+                        tooltip: {
+                            position: 'top',
+                            formatter: function(params) {
+                                const stageName = stages[params.value[1]].name;
+                                const metricName = metricsName[params.value[0]];
+                                return `${stageName} - ${metricName}<br/>
+                                       ${params.value[2]} ms`;
+                            }
+                        },
+                        grid: {
+                            top: '50px',
+                            right: '15%',
+                            bottom: '10%',
+                            left: '15%',
+                            containLabel: true
+                        },
+                        xAxis: {
+                            type: 'category',
+                            data: metricsName,
+                            splitArea: {
+                                show: true
+                            },
+                            axisLabel: {
+                                fontSize: 11
+                            }
+                        },
+                        yAxis: {
+                            type: 'category',
+                            data: stages.map(s => s.name),
+                            splitArea: {
+                                show: true
+                            },
+                            axisLabel: {
+                                fontSize: 11
+                            }
+                        },
+                        visualMap: {
+                            min: 0,
+                            max: Math.max(...heatmapData.map(d => d[2])),
+                            calculable: true,
+                            orient: 'horizontal',
+                            left: 'center',
+                            bottom: '0%',
+                            color: ['#F56C6C', '#E6A23C', '#67C23A'],
+                            formatter: function(value) {
+                                return value.toFixed(2) + ' ms';
+                            }
+                        },
+                        series: [{
+                            name: '请求时间',
+                            type: 'heatmap',
+                            data: heatmapData,
+                            label: {
+                                show: true,
+                                formatter: function(params) {
+                                    const value = parseFloat(params.value[2]);
+                                    if (value < 0.01) return '<0.01';
+                                    if (value < 1) return value.toFixed(3);
+                                    if (value < 10) return value.toFixed(2);
+                                    return value.toFixed(1);
+                                },
+                                fontSize: 10
+                            },
+                            emphasis: {
+                                itemStyle: {
+                                    shadowBlur: 10,
+                                    shadowColor: 'rgba(0, 0, 0, 0.5)'
+                                }
+                            }
+                        }]
+                    };
+
+                    window.charts.timeMetrics.setOption(option);
+                }
+
+                console.log('图表数据更新成功');
+            } catch (error) {
+                console.error('更新图表数据失败:', error);
+            }
+        }
+
+        function calculateTPS(metrics) {
+            // 检查数据有效性
+            if (!metrics?.http_reqs?.values) {
+                console.warn('无效的metrics数据');
+                return 0;
+            }
+
+            const successfulRequests = metrics.http_reqs.values.count || 0;
+            // k6的duration是以秒为单位
+            const testDuration = metrics.http_reqs.values.duration || 1; // 避免除以0
+
+            // 计算TPS并保留两位小数
+            const tps = successfulRequests / testDuration;
+            return formatNumber(tps);
+        }
+    </script>
+</body>
+</html>
+

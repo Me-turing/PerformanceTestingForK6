@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>Fetch转K6格式工具</title>
+    <style>
+        body {
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 0 20px;
+            font-family: Arial, sans-serif;
+        }
+        textarea {
+            width: 100%;
+            height: 300px;
+            margin: 10px 0;
+            font-family: monospace;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <h1>Fetch转K6格式工具</h1>
+    <textarea id="input" placeholder="请粘贴fetch代码..."></textarea>
+    <button onclick="convertToK6Format()">转换为K6格式</button>
+    <textarea id="output" readonly placeholder="转换结果将显示在这里..."></textarea>
+
+    <script>
+        function convertToK6Format() {
+            try {
+                const input = document.getElementById('input').value;
+                
+                // 提取URL和配置对象
+                const urlMatch = input.match(/fetch\("([^"]+)"/);
+                const configMatch = input.match(/\{([^]*)\}\);$/);
+                
+                if (!urlMatch || !configMatch) {
+                    throw new Error('无法解析fetch代码');
+                }
+                
+                const url = urlMatch[1];
+                const configStr = configMatch[1];
+                
+                // 解析配置对象
+                const config = JSON.parse('{' + configStr + '}');
+                
+                // 生成k6格式输出，使用完整的URL作为BASE_URL
+                let output = `const BASE_URL = '${url}'; // 基础 URL\n\n`;
+                output += 'const headers = {\n';
+                
+                // 遍历headers
+                for (const [key, value] of Object.entries(config.headers)) {
+                    // 处理特殊的sec-ch-ua值，保持原有的引号格式
+                    if (key === 'sec-ch-ua') {
+                        output += `  '${key}': ${JSON.stringify(value)},\n`;
+                    } else {
+                        output += `  '${key}': '${value}',\n`;
+                    }
+                }
+                
+                output += '};';
+                
+                document.getElementById('output').value = output;
+            } catch (error) {
+                document.getElementById('output').value = '转换出错: ' + error.message + '\n请确保输入的是完整的fetch代码。';
+            }
+        }
+    </script>
+</body>
+</html>
