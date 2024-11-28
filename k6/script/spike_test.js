@@ -24,7 +24,7 @@ export const options = {
 
 
 // 请求配置
-const BASE_URL = 'http://anydoor.sqtan.com/user/isLogin'; // 基础 URL
+const BASE_URL = 'https://api.example.com/init'; // 基础 URL
 
 const headers = {
   'accept': '*/*',
@@ -32,7 +32,6 @@ const headers = {
   'cache-control': 'no-cache',
   'pragma': 'no-cache',
   'proxy-connection': 'keep-alive',
-  'cookie': 'anydoor=4faff755-d136-41c9-be3f-b7e78f3fc1fd',
 };
 
 export default function () {
